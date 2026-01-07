@@ -1,98 +1,48 @@
-# A Basic Semantic Evaluation Framework for AI Systems
+# A Semantic Evaluation & Analysis Framework for AI Systems
 
-This framework utilizes **Sentence Embeddings** and **Cosine Similarity** to quantify how closely an AI's output matches a "Golden" or "Reference" response. Unlike traditional keyword matching, this approach understands the *meaning* (semantics) behind the words.
+This repository contains a framework utilizing **Sentence Embeddings** and **Cosine Similarity** to quantify the relationship between text inputs. By moving beyond keyword matching, this system can evaluate AI accuracy and perform intelligent log parsing based on **semantic intent**.
+
+## Repository Structure
+
+* `examples/basic_qa.py`: Demonstrates Golden Response testing for Chatbots/LLMs.
+* `examples/api_logs.py`: Demonstrates semantic filtering of complex AWS/Cloud logs.
+* `requirements.txt`: Project dependencies (pandas, sentence-transformers, scikit-learn).
 
 ---
 
-## Core Concept: Semantic Similarity Evaluation
+## Core Concept: Semantic Similarity
 
-The provided script converts text into high-dimensional vectors (embeddings) where the distance between vectors represents the difference in meaning.
+The framework converts raw text into high-dimensional vectors (embeddings). We then calculate the **Cosine Similarity** to determine how close two pieces of text are in meaning.
 
-### Why Use Cosine Similarity?
+### Why this beats Keyword Search:
 
-* **Context over Keywords:** It recognizes that "preventive health" and "wellness and longevity" are related, even though the words are different.
-* **Scale Invariance:** It measures the **angle** between vectors rather than length, meaning a short summary can be highly similar to a longer, detailed explanation if they share the same intent.
+* **Intent Recognition:** It understands that "expired token" and "authorization error" are semantically related to "Security Failure."
+* **Noise Reduction:** It can filter through "noisy" system logs to find specific types of failures without needing complex Regular Expressions (Regex).
 
 ---
 
 ## Application Scenarios
 
-### 1. Agent Evaluation (Task Completion)
+### 1. Basic QA & Agent Evaluation (`basic_qa.py`)
 
-AI Agents often have multiple "execution paths." You can use this framework to verify if an agent arrived at the correct conclusion, even if its phrasing varies per run.
+Used to verify if an AI Agent or Chatbot is providing accurate information.
 
-* **How to use:** Store the "Success Criteria" as the `expected_response`. If the agent's final answer scores , the task is marked as "Success."
+* **Method:** Compare the **Actual AI Response** against a **"Golden" Reference**.
+* **Use Case:** Ensuring the **Obu Eats** assistant correctly explains its focus on "preventive health" rather than just "food delivery."
 
-### 2. Chatbot UI Evaluation (Regression Testing)
+### 2. Intelligent Log Analysis (`api_logs.py`)
 
-When updating a UI or changing an LLM model, you need to ensure the "vibes" or "persona" haven't changed.
+Used to hunt for specific issues within massive, unstructured log files (e.g., AWS Lambda, CloudWatch).
 
-* **How to use:** * **Baseline:** Capture responses from the stable version.
-* **Test:** Capture responses from the new version.
-* **Evaluation:** A low similarity score flags a "regression," alerting developers that the UI is presenting information differently than before.
+* **Method:** Define a **Semantic Intent** (e.g., "Authentication failures or timeouts") and rank logs by how closely they match that description.
+* **Use Case:** Finding "InvalidIdentityToken" or "ExecutionTimedOut" errors without knowing the exact error string beforehand.
 
+### 3. Source Evaluation (RAG Grounding)
 
+Used to detect "Hallucinations" in Retrieval-Augmented Generation systems.
 
-### 3. Source Evaluation (Hallucination Detection)
-
-In RAG (Retrieval-Augmented Generation) systems like Obu Eats, the AI must stay grounded in its provided sources (e.g., medical nutrition papers).
-
-* **How to use:** Compare the **LLM Response** against the **Retrieved Source Text**.
-* High similarity suggests the AI is accurately summarizing the source.
-* Low similarity might indicate the AI is "hallucinating" or pulling from its internal training data instead of the verified source.
-
-
-
----
-
-## Implementation Guide
-
-The following code demonstrates a "Similarity Test" for the Obu Eats concept:
-
-```python
-import pandas as pd
-from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
-
-# ------------------------------------
-# Load the Embedding Model
-# ------------------------------------
-model = SentenceTransformer("all-MiniLM-L6-v2")
-
-# ------------------------------------
-# Define the Actual output
-# ------------------------------------
-actual_input = """
-Obu Eats is an AI-powered nutrition and meal planning platform based in Kenya. 
-Unlike a standard food delivery app, like Uber Eats, it focuses on preventive health.
-"""
-
-# ----------------------------------------------------
-# Define the 'Golden' output (the perfect reference)
-# ----------------------------------------------------
-expected_response = """
-In summary, Obu Eats is an AI-powered health and nutrition platform focused on the Kenyan market. 
-It is designed to bridge the gap between nutrition data and daily eating habits.
-"""
-
-# ------------------------------------
-# Convert to Vectors
-# ------------------------------------
-embeddings = model.encode([actual_input])
-target_embedding = model.encode([expected_response])
-
-# ------------------------------------
-# Calculate Score (0.0 to 1.0)
-# ------------------------------------
-similarity = cosine_similarity(embeddings, target_embedding).ravel()[0]
-
-print(f"Semantic Similarity Score: {similarity:.4f}")
-
-# ------------------------------------
-# Output: ~0.82 (Highly Similar)
-# ------------------------------------
-
-```
+* **Method:** Compare the **LLM Response** against the **Retrieved Source Text**.
+* **Low Score:** Indicates the AI is straying from the facts provided in the source documents.
 
 ---
 
@@ -100,7 +50,27 @@ print(f"Semantic Similarity Score: {similarity:.4f}")
 
 | Similarity Score | Interpretation | Action Required |
 | --- | --- | --- |
-| **0.90 – 1.00** | Identical or Near-Perfect | None (Pass) |
-| **0.75 – 0.89** | Semantically Aligned | Review for minor phrasing issues |
-| **0.50 – 0.74** | Partially Related | High risk of hallucination or missed context |
-| **Below 0.50** | Unrelated / Off-topic | **Critical Failure** (System needs prompt tuning) |
+| **0.90 – 1.00** | Identical / Near-Perfect | None (Pass) |
+| **0.75 – 0.89** | Semantically Aligned | Review for minor phrasing or detail gaps |
+| **0.50 – 0.74** | Partially Related | High risk of hallucination or partial log match |
+| **Below 0.50** | Unrelated / Off-topic | **Failure** (System needs prompt or filter tuning) |
+
+---
+
+## Quick Start
+
+### 1. Setup Environment
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 2. Run Log Analysis Example
+
+This script parses raw AWS logs and identifies authentication and timeout issues using semantic intent:
+
+```bash
+python examples/api_logs.py
+```
